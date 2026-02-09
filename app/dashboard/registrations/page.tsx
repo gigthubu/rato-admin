@@ -19,7 +19,6 @@ import {
   Tooltip,
   Alert,
 } from '@mantine/core';
-import { DateInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
@@ -31,6 +30,7 @@ import {
 } from '@tabler/icons-react';
 import { apiGet, apiPost } from '@/lib/api';
 import type { Registration } from '@/lib/types';
+import { NepaliDatePicker } from '@/components/shared';
 import dayjs from 'dayjs';
 
 export default function RegistrationsPage() {
@@ -458,7 +458,7 @@ export default function RegistrationsPage() {
               . This will create a new tenant and admin user.
             </Alert>
 
-            <DateInput
+            <NepaliDatePicker
               label="Subscription Expiry Date"
               description="Set when the subscription should expire"
               placeholder="Select date"

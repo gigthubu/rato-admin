@@ -44,9 +44,11 @@ import {
   IconReceipt,
   IconUserCircle,
   IconExternalLink,
+  IconCalendar,
 } from '@tabler/icons-react';
-import { apiGet, apiPut } from '@/lib/api';
-import type { Tenant, Feature, User } from '@/lib/types';
+import { apiGet, apiPost, apiPut } from '@/lib/api';
+import type { Tenant, Feature, User, FiscalYear } from '@/lib/types';
+import { NepaliDatePicker } from '@/components/shared';
 import dayjs from 'dayjs';
 
 interface TenantWithRelations extends Tenant {
@@ -119,6 +121,11 @@ export default function TenantsPage() {
   const [tenantFeatures, setTenantFeatures] = useState<Feature[]>([]);
   const [tenantUsers, setTenantUsers] = useState<User[]>([]);
   const [tenantStats, setTenantStats] = useState<TenantStats | null>(null);
+  const [tenantFiscalYears, setTenantFiscalYears] = useState<FiscalYear[]>([]);
+  const [fyStartDate, setFyStartDate] = useState<Date | null>(null);
+  const [fyEndDate, setFyEndDate] = useState<Date | null>(null);
+  const [fyIsCurrent, setFyIsCurrent] = useState(true);
+  const [isCreatingFy, setIsCreatingFy] = useState(false);
   const [viewModalOpened, { open: openViewModal, close: closeViewModal }] = useDisclosure(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('info');
@@ -213,6 +220,13 @@ export default function TenantsPage() {
     } catch {
       setTenantStats(null);
     }
+
+    try {
+      const fiscalYears = await apiGet<FiscalYear[]>(`/tenants/${tenantId}/fiscal-years`);
+      setTenantFiscalYears(fiscalYears);
+    } catch {
+      setTenantFiscalYears([]);
+    }
   };
 
   const handleFeatureToggle = async (feature: Feature) => {
@@ -242,6 +256,53 @@ export default function TenantsPage() {
     setActiveTab('info');
     fetchTenantDetails(tenant.id);
     openViewModal();
+  };
+
+  const handleCreateFiscalYear = async () => {
+    if (!selectedTenant) return;
+    if (!fyStartDate || !fyEndDate) {
+      notifications.show({
+        color: 'red',
+        title: 'Missing dates',
+        message: 'Please select both start and end dates.',
+      });
+      return;
+    }
+
+    setIsCreatingFy(true);
+    try {
+      const payload = {
+        startDate: fyStartDate.toISOString(),
+        endDate: fyEndDate.toISOString(),
+        isCurrent: fyIsCurrent,
+      };
+      const created = await apiPost<FiscalYear>(`/tenants/${selectedTenant.id}/fiscal-years`, payload);
+      notifications.show({
+        color: 'green',
+        title: 'Fiscal year created',
+        message: `Fiscal year ${created.name} added.`,
+      });
+
+      const fiscalYears = await apiGet<FiscalYear[]>(`/tenants/${selectedTenant.id}/fiscal-years`);
+      setTenantFiscalYears(fiscalYears);
+
+      if (created.isCurrent) {
+        setSelectedTenant({ ...selectedTenant, fiscalYear: created.name });
+        fetchTenants();
+      }
+
+      setFyStartDate(null);
+      setFyEndDate(null);
+      setFyIsCurrent(true);
+    } catch (error: any) {
+      notifications.show({
+        color: 'red',
+        title: 'Failed to create fiscal year',
+        message: error?.message || 'Unable to create fiscal year.',
+      });
+    } finally {
+      setIsCreatingFy(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -410,6 +471,9 @@ export default function TenantsPage() {
               </Tabs.Tab>
               <Tabs.Tab value="users" leftSection={<IconUsers size={16} />}>
                 Users
+              </Tabs.Tab>
+              <Tabs.Tab value="fiscal" leftSection={<IconCalendar size={16} />}>
+                Fiscal Years
               </Tabs.Tab>
             </Tabs.List>
 
@@ -679,6 +743,105 @@ export default function TenantsPage() {
                     </Table.Tbody>
                   </Table>
                 )}
+              </Stack>
+            </Tabs.Panel>
+
+            {/* Fiscal Years Tab */}
+            <Tabs.Panel value="fiscal">
+              <Stack gap="md">
+                <Text size="sm" c="dimmed">
+                  Create and manage fiscal years for this tenant.
+                </Text>
+
+                <Card withBorder radius="md" p="md">
+                  <Text fw={600} mb="sm">
+                    Add Fiscal Year
+                  </Text>
+                  <SimpleGrid cols={3}>
+                    <NepaliDatePicker
+                      label="Start Date"
+                      value={fyStartDate}
+                      onChange={setFyStartDate}
+                      placeholder="Select start date"
+                    />
+                    <NepaliDatePicker
+                      label="End Date"
+                      value={fyEndDate}
+                      onChange={setFyEndDate}
+                      placeholder="Select end date"
+                    />
+                    <Box>
+                      <Text size="sm" mb={6}>
+                        Set as Current
+                      </Text>
+                      <Switch
+                        checked={fyIsCurrent}
+                        onChange={(event) => setFyIsCurrent(event.currentTarget.checked)}
+                        color="green"
+                        label={fyIsCurrent ? 'Current fiscal year' : 'Not current'}
+                      />
+                    </Box>
+                  </SimpleGrid>
+                  <Group justify="flex-end" mt="md">
+                    <Button onClick={handleCreateFiscalYear} loading={isCreatingFy}>
+                      Create Fiscal Year
+                    </Button>
+                  </Group>
+                </Card>
+
+                <Card withBorder radius="md" p="md">
+                  <Text fw={600} mb="sm">
+                    Existing Fiscal Years
+                  </Text>
+                  {tenantFiscalYears.length === 0 ? (
+                    <Text size="sm" c="dimmed">
+                      No fiscal years created for this tenant yet.
+                    </Text>
+                  ) : (
+                    <Table striped>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Name</Table.Th>
+                          <Table.Th>Start</Table.Th>
+                          <Table.Th>End</Table.Th>
+                          <Table.Th>Current</Table.Th>
+                          <Table.Th>Status</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {tenantFiscalYears.map((fy) => (
+                          <Table.Tr key={fy.id}>
+                            <Table.Td>
+                              <Text size="sm" fw={500}>
+                                {fy.name}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm">
+                                {dayjs(fy.startDate).format('MMM D, YYYY')}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm">
+                                {dayjs(fy.endDate).format('MMM D, YYYY')}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge size="xs" color={fy.isCurrent ? 'green' : 'gray'}>
+                                {fy.isCurrent ? 'Current' : 'No'}
+                              </Badge>
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge size="xs" color={fy.isClosed ? 'red' : 'blue'}>
+                                {fy.isClosed ? 'Closed' : 'Open'}
+                              </Badge>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  )}
+                </Card>
               </Stack>
             </Tabs.Panel>
           </Tabs>

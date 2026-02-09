@@ -37,6 +37,17 @@ export interface Tenant {
   createdAt: string;
 }
 
+export interface FiscalYear {
+  id: number;
+  tenantId: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  isClosed: boolean;
+  createdAt: string;
+}
+
 export interface TenantWithDetails extends Tenant {
   users: User[];
   features: Feature[];
