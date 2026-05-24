@@ -368,6 +368,38 @@ export function isValidBsDate(bs: NepaliDate): boolean {
   }
 }
 
+export const AD_MONTHS_EN = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+export function getDaysInAdMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+export function getAdMonthCalendar(year: number, month: number): (number | null)[][] {
+  const daysInMonth = getDaysInAdMonth(year, month);
+  const startDayOfWeek = new Date(year, month - 1, 1).getDay();
+
+  const weeks: (number | null)[][] = [];
+  let week: (number | null)[] = new Array(startDayOfWeek).fill(null);
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    week.push(day);
+    if (week.length === 7) {
+      weeks.push(week);
+      week = [];
+    }
+  }
+
+  if (week.length > 0) {
+    while (week.length < 7) week.push(null);
+    weeks.push(week);
+  }
+
+  return weeks;
+}
+
 /**
  * Get calendar grid for a month (for calendar component)
  */

@@ -33,6 +33,8 @@ export interface Tenant {
   name: string;
   slug: string;
   fiscalYear: string;
+  panNumber: string | null;
+  vatNumber: string | null;
   status: 'ACTIVE' | 'SUSPENDED';
   createdAt: string;
 }
@@ -48,26 +50,13 @@ export interface FiscalYear {
   createdAt: string;
 }
 
-export interface TenantWithDetails extends Tenant {
-  users: User[];
-  features: Feature[];
-  _count?: {
-    users: number;
-    invoices: number;
-    parties: number;
-  };
-}
-
 // User Types
-export interface User {
+export interface TenantUser {
   id: number;
   email: string;
   name: string;
   role: 'SUPER_ADMIN' | 'ADMIN' | 'USER';
-  tenantId: number;
-  isActive: boolean;
   createdAt: string;
-  lastLoginAt: string | null;
 }
 
 // Feature Types
@@ -78,7 +67,51 @@ export interface Feature {
   tenantId: number;
 }
 
-// Stats Types
+// Admin Stats
+export interface TenantAdminStats {
+  invoiceCount: number;
+  purchaseCount: number;
+  partyCount: number;
+  itemCount: number;
+  totalPaymentsReceived: number;
+  totalExpenses: number;
+}
+
+// Admin Invoice (lightweight for listing)
+export interface AdminInvoice {
+  id: number;
+  number: string;
+  invoiceDate: string;
+  invoiceDateBs: string | null;
+  totalAmount: number;
+  paidAmount: number;
+  status: string;
+  party: { name: string } | null;
+}
+
+// Admin Party (lightweight for listing)
+export interface AdminParty {
+  id: number;
+  name: string;
+  type: string;
+  panNumber: string | null;
+  balance: number;
+  createdAt: string;
+}
+
+// Registration info for a tenant (from linked registration)
+export interface TenantRegistrationInfo {
+  id: number;
+  email: string;
+  name: string;
+  companyName: string;
+  expiryDate: string | null;
+  status: string;
+  approvedAt: string | null;
+  createdAt: string;
+}
+
+// Stats Types (dashboard)
 export interface AdminStats {
   totalTenants: number;
   activeTenants: number;
@@ -87,3 +120,6 @@ export interface AdminStats {
   totalUsers: number;
   recentRegistrations: Registration[];
 }
+
+// Legacy alias kept for dashboard page compatibility
+export type User = TenantUser;
