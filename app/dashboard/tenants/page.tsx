@@ -26,7 +26,7 @@ import {
   CopyButton,
   Alert,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   IconSearch,
@@ -51,6 +51,8 @@ import {
   IconCopy,
   IconCheck,
   IconInfoCircle,
+  IconBook,
+  IconTool,
 } from '@tabler/icons-react';
 import { apiGet, apiPost, apiPut } from '@/lib/api';
 import type {
@@ -64,6 +66,9 @@ import type {
   TenantRegistrationInfo,
 } from '@/lib/types';
 import { NepaliDatePicker } from '@/components/shared';
+import { FiscalYearsTab } from '@/components/tenant-detail/FiscalYearsTab';
+import { LedgerTab } from '@/components/tenant-detail/LedgerTab';
+import { MaintenanceTab } from '@/components/tenant-detail/MaintenanceTab';
 import dayjs from 'dayjs';
 
 const featureConfig: Record<string, { icon: React.ReactNode; description: string; color: string }> = {
@@ -115,6 +120,7 @@ export default function TenantsPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>('all');
 
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const isMobile = useMediaQuery('(max-width: 48em)');
   const [viewModalOpened, { open: openViewModal, close: closeViewModal }] = useDisclosure(false);
   const [activeTab, setActiveTab] = useState<string | null>('info');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -128,11 +134,6 @@ export default function TenantsPage() {
   const [adminParties, setAdminParties] = useState<AdminParty[]>([]);
   const [tenantFiscalYears, setTenantFiscalYears] = useState<FiscalYear[]>([]);
 
-  // Fiscal year creation
-  const [fyStartDate, setFyStartDate] = useState<Date | null>(null);
-  const [fyEndDate, setFyEndDate] = useState<Date | null>(null);
-  const [fyIsCurrent, setFyIsCurrent] = useState(true);
-  const [isCreatingFy, setIsCreatingFy] = useState(false);
 
   // Edit info form
   const [editInfoOpen, setEditInfoOpen] = useState(false);
@@ -320,35 +321,6 @@ export default function TenantsPage() {
     openViewModal();
   };
 
-  const handleCreateFiscalYear = async () => {
-    if (!selectedTenant || !fyStartDate || !fyEndDate) {
-      notifications.show({ color: 'red', title: 'Missing dates', message: 'Please select both start and end dates.' });
-      return;
-    }
-    setIsCreatingFy(true);
-    try {
-      const created = await apiPost<FiscalYear>(`/tenants/${selectedTenant.id}/fiscal-years`, {
-        startDate: fyStartDate.toISOString(),
-        endDate: fyEndDate.toISOString(),
-        isCurrent: fyIsCurrent,
-      });
-      notifications.show({ color: 'green', title: 'Fiscal year created', message: `Fiscal year ${created.name} added.` });
-      const fiscalYears = await apiGet<FiscalYear[]>(`/tenants/${selectedTenant.id}/fiscal-years`);
-      setTenantFiscalYears(fiscalYears);
-      if (created.isCurrent) {
-        setSelectedTenant({ ...selectedTenant, fiscalYear: created.name });
-        fetchTenants();
-      }
-      setFyStartDate(null);
-      setFyEndDate(null);
-      setFyIsCurrent(true);
-    } catch (error: any) {
-      notifications.show({ color: 'red', title: 'Failed to create fiscal year', message: error?.message || 'Unable to create fiscal year.' });
-    } finally {
-      setIsCreatingFy(false);
-    }
-  };
-
   const expiryStatus = registrationInfo?.expiryDate
     ? dayjs(registrationInfo.expiryDate).isBefore(dayjs())
       ? 'expired'
@@ -389,7 +361,8 @@ export default function TenantsPage() {
       </Paper>
 
       <Paper radius="md" shadow="sm">
-        <Table striped highlightOnHover>
+        <Table.ScrollContainer minWidth={700}>
+          <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Tenant</Table.Th>
@@ -440,7 +413,8 @@ export default function TenantsPage() {
               ))
             )}
           </Table.Tbody>
-        </Table>
+          </Table>
+        </Table.ScrollContainer>
       </Paper>
 
       {/* Tenant Details Modal */}
@@ -454,10 +428,12 @@ export default function TenantsPage() {
           </Group>
         }
         size="90%"
+        fullScreen={isMobile}
       >
         {selectedTenant && (
           <Tabs value={activeTab} onChange={setActiveTab}>
-            <Tabs.List mb="md">
+            {/* Seven tabs never fit a phone — let the strip scroll instead of wrapping. */}
+            <Tabs.List mb="md" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
               <Tabs.Tab value="info" leftSection={<IconSettings size={16} />}>Information</Tabs.Tab>
               <Tabs.Tab value="features" leftSection={<IconToggleLeft size={16} />}>Features</Tabs.Tab>
               <Tabs.Tab value="data" leftSection={<IconDatabase size={16} />}>Stats</Tabs.Tab>
@@ -465,6 +441,8 @@ export default function TenantsPage() {
               <Tabs.Tab value="parties" leftSection={<IconUserCircle size={16} />}>Parties</Tabs.Tab>
               <Tabs.Tab value="users" leftSection={<IconUsers size={16} />}>Users</Tabs.Tab>
               <Tabs.Tab value="fiscal" leftSection={<IconCalendar size={16} />}>Fiscal Years</Tabs.Tab>
+              <Tabs.Tab value="ledger" leftSection={<IconBook size={16} />}>Ledger</Tabs.Tab>
+              <Tabs.Tab value="maintenance" leftSection={<IconTool size={16} />}>Maintenance</Tabs.Tab>
             </Tabs.List>
 
             {/* Information Tab */}
@@ -480,7 +458,7 @@ export default function TenantsPage() {
                       </Button>
                     )}
                   </Group>
-                  <SimpleGrid cols={2}>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }}>
                     <Box>
                       <Text size="xs" c="dimmed">Name</Text>
                       <Text size="sm" fw={500}>{selectedTenant.name}</Text>
@@ -520,7 +498,7 @@ export default function TenantsPage() {
                 {editInfoOpen && (
                   <Card withBorder radius="md" p="md">
                     <Text fw={600} mb="sm">Edit Tenant Info</Text>
-                    <SimpleGrid cols={2}>
+                    <SimpleGrid cols={{ base: 1, sm: 2 }}>
                       <TextInput label="Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
                       <TextInput
                         label="Slug"
@@ -542,7 +520,7 @@ export default function TenantsPage() {
                 {registrationInfo && (
                   <Paper bg="gray.0" p="md" radius="md">
                     <Text fw={600} mb="sm">Subscription</Text>
-                    <SimpleGrid cols={2}>
+                    <SimpleGrid cols={{ base: 1, sm: 2 }}>
                       <Box>
                         <Text size="xs" c="dimmed">Company</Text>
                         <Text size="sm" fw={500}>{registrationInfo.companyName}</Text>
@@ -625,7 +603,7 @@ export default function TenantsPage() {
                 {tenantFeatures.length === 0 ? (
                   <Text c="dimmed" ta="center" py="lg">No features configured for this tenant</Text>
                 ) : (
-                  <SimpleGrid cols={2}>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }}>
                     {tenantFeatures.map((feature) => {
                       const config = featureConfig[feature.name] || {
                         icon: <IconSettings size={20} />,
@@ -662,7 +640,7 @@ export default function TenantsPage() {
             <Tabs.Panel value="data">
               <Stack gap="md">
                 <Text size="sm" c="dimmed">Overview of tenant&apos;s business data</Text>
-                <SimpleGrid cols={3}>
+                <SimpleGrid cols={{ base: 1, sm: 3 }}>
                   <Card padding="lg" radius="md" withBorder>
                     <Group>
                       <ThemeIcon size="xl" radius="md" color="blue" variant="light">
@@ -744,7 +722,8 @@ export default function TenantsPage() {
                 {adminInvoices.length === 0 ? (
                   <Text c="dimmed" ta="center" py="lg">No invoices found</Text>
                 ) : (
-                  <Table striped>
+                  <Table.ScrollContainer minWidth={700}>
+                    <Table striped>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Invoice #</Table.Th>
@@ -781,7 +760,8 @@ export default function TenantsPage() {
                         </Table.Tr>
                       ))}
                     </Table.Tbody>
-                  </Table>
+                    </Table>
+                  </Table.ScrollContainer>
                 )}
               </Stack>
             </Tabs.Panel>
@@ -793,7 +773,8 @@ export default function TenantsPage() {
                 {adminParties.length === 0 ? (
                   <Text c="dimmed" ta="center" py="lg">No parties found</Text>
                 ) : (
-                  <Table striped>
+                  <Table.ScrollContainer minWidth={700}>
+                    <Table striped>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Name</Table.Th>
@@ -828,7 +809,8 @@ export default function TenantsPage() {
                         </Table.Tr>
                       ))}
                     </Table.Tbody>
-                  </Table>
+                    </Table>
+                  </Table.ScrollContainer>
                 )}
               </Stack>
             </Tabs.Panel>
@@ -840,7 +822,8 @@ export default function TenantsPage() {
                 {tenantUsers.length === 0 ? (
                   <Text c="dimmed" ta="center" py="lg">No users found for this tenant</Text>
                 ) : (
-                  <Table striped>
+                  <Table.ScrollContainer minWidth={700}>
+                    <Table striped>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Name</Table.Th>
@@ -874,84 +857,33 @@ export default function TenantsPage() {
                         </Table.Tr>
                       ))}
                     </Table.Tbody>
-                  </Table>
+                    </Table>
+                  </Table.ScrollContainer>
                 )}
               </Stack>
             </Tabs.Panel>
 
             {/* Fiscal Years Tab */}
             <Tabs.Panel value="fiscal">
-              <Stack gap="md">
-                <Text size="sm" c="dimmed">Create and manage fiscal years for this tenant.</Text>
+              <FiscalYearsTab
+                tenantId={selectedTenant.id}
+                fiscalYears={tenantFiscalYears}
+                onChange={setTenantFiscalYears}
+                onCurrentYearChange={(name) => {
+                  setSelectedTenant({ ...selectedTenant, fiscalYear: name });
+                  fetchTenants();
+                }}
+              />
+            </Tabs.Panel>
 
-                <Card withBorder radius="md" p="md">
-                  <Text fw={600} mb="sm">Add Fiscal Year</Text>
-                  <SimpleGrid cols={3}>
-                    <NepaliDatePicker
-                      label="Start Date"
-                      value={fyStartDate}
-                      onChange={setFyStartDate}
-                      placeholder="Select start date"
-                    />
-                    <NepaliDatePicker
-                      label="End Date"
-                      value={fyEndDate}
-                      onChange={setFyEndDate}
-                      placeholder="Select end date"
-                    />
-                    <Box>
-                      <Text size="sm" mb={6}>Set as Current</Text>
-                      <Switch
-                        checked={fyIsCurrent}
-                        onChange={(e) => setFyIsCurrent(e.currentTarget.checked)}
-                        color="green"
-                        label={fyIsCurrent ? 'Current fiscal year' : 'Not current'}
-                      />
-                    </Box>
-                  </SimpleGrid>
-                  <Group justify="flex-end" mt="md">
-                    <Button onClick={handleCreateFiscalYear} loading={isCreatingFy}>Create Fiscal Year</Button>
-                  </Group>
-                </Card>
+            {/* Ledger Tab */}
+            <Tabs.Panel value="ledger">
+              <LedgerTab tenant={selectedTenant} parties={adminParties} />
+            </Tabs.Panel>
 
-                <Card withBorder radius="md" p="md">
-                  <Text fw={600} mb="sm">Existing Fiscal Years</Text>
-                  {tenantFiscalYears.length === 0 ? (
-                    <Text size="sm" c="dimmed">No fiscal years created for this tenant yet.</Text>
-                  ) : (
-                    <Table striped>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>Name</Table.Th>
-                          <Table.Th>Start</Table.Th>
-                          <Table.Th>End</Table.Th>
-                          <Table.Th>Current</Table.Th>
-                          <Table.Th>Status</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {tenantFiscalYears.map((fy) => (
-                          <Table.Tr key={fy.id}>
-                            <Table.Td><Text size="sm" fw={500}>{fy.name}</Text></Table.Td>
-                            <Table.Td><Text size="sm">{dayjs(fy.startDate).format('MMM D, YYYY')}</Text></Table.Td>
-                            <Table.Td><Text size="sm">{dayjs(fy.endDate).format('MMM D, YYYY')}</Text></Table.Td>
-                            <Table.Td>
-                              <Badge size="xs" color={fy.isCurrent ? 'green' : 'gray'}>
-                                {fy.isCurrent ? 'Current' : 'No'}
-                              </Badge>
-                            </Table.Td>
-                            <Table.Td>
-                              <Badge size="xs" color={fy.isClosed ? 'red' : 'blue'}>
-                                {fy.isClosed ? 'Closed' : 'Open'}
-                              </Badge>
-                            </Table.Td>
-                          </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
-                  )}
-                </Card>
-              </Stack>
+            {/* Maintenance Tab */}
+            <Tabs.Panel value="maintenance">
+              <MaintenanceTab tenantId={selectedTenant.id} />
             </Tabs.Panel>
           </Tabs>
         )}

@@ -188,7 +188,8 @@ export default function RegistrationsPage() {
 
       {/* Table */}
       <Paper radius="md" shadow="sm">
-        <Table striped highlightOnHover>
+        <Table.ScrollContainer minWidth={800}>
+          <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Company</Table.Th>
@@ -295,7 +296,8 @@ export default function RegistrationsPage() {
               ))
             )}
           </Table.Tbody>
-        </Table>
+          </Table>
+        </Table.ScrollContainer>
       </Paper>
 
       {/* View Modal */}

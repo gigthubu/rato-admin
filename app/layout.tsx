@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { ColorSchemeScript } from "@mantine/core";
 import { Providers } from "./providers";
@@ -12,6 +12,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Rato Khata Admin",
   description: "Super Admin Dashboard for Rato Khata",
+};
+
+// This portal is used primarily on a phone. `maximumScale` is deliberately left
+// unset so pinch-zoom keeps working on the wide ledger tables.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

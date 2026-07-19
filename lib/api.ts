@@ -112,6 +112,24 @@ export async function apiGet<T>(path: string): Promise<T> {
   }
 }
 
+/**
+ * Read a tenant-scoped endpoint as that tenant. The API honours this header only
+ * for SUPER_ADMIN and only on GET, so it lets the admin portal reuse the real
+ * accounting/party/ledger endpoints instead of duplicating each one.
+ */
+export const ADMIN_TENANT_HEADER = 'X-Admin-Tenant-Id';
+
+export async function apiGetAsTenant<T>(tenantId: number, path: string): Promise<T> {
+  try {
+    const response = await apiClient.get<ApiResponse<T>>(path, {
+      headers: { [ADMIN_TENANT_HEADER]: String(tenantId) },
+    });
+    return response.data.data;
+  } catch (error) {
+    throw handleAxiosError(error);
+  }
+}
+
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   try {
     const response = await apiClient.post<ApiResponse<T>>(path, body);

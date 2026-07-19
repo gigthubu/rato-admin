@@ -123,3 +123,119 @@ export interface AdminStats {
 
 // Legacy alias kept for dashboard page compatibility
 export type User = TenantUser;
+
+// Accounting integrity check (GET /maintenance/tenants/:id/integrity)
+export interface AccountingHealth {
+  isClean: boolean;
+  checkedAt: string;
+  trialBalance: {
+    totalDebit: number;
+    totalCredit: number;
+    difference: number;
+    balanced: boolean;
+  };
+  unbalancedEntries: Array<{
+    journalEntryId: number;
+    voucherNumber: string;
+    totalDebit: number;
+    totalCredit: number;
+    difference: number;
+  }>;
+  partyBalanceDrift: Array<{
+    partyId: number;
+    partyName: string;
+    storedBalance: number;
+    ledgerBalance: number;
+    difference: number;
+  }>;
+  accountBalanceDrift: Array<{
+    accountId: number;
+    code: string;
+    name: string;
+    storedBalance: number;
+    ledgerBalance: number;
+    difference: number;
+  }>;
+  accountsWithoutSubType: Array<{ id: number; code: string; name: string; type: string }>;
+  unstampedLineCount: number;
+}
+
+// Maintenance scripts (GET /maintenance/scripts)
+export interface MaintenanceScript {
+  key: string;
+  label: string;
+  description: string;
+  mutating: boolean;
+  supportsDryRun: boolean;
+}
+
+export interface ScriptRunResult {
+  script: string;
+  label: string;
+  tenantId: number;
+  dryRun: boolean;
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  report: unknown;
+}
+
+// Journal entries (GET /accounting/journals, read as tenant)
+export interface JournalLine {
+  id: number;
+  debit: number;
+  credit: number;
+  description: string | null;
+  account: { id: number; name: string; code: string; type: string } | null;
+}
+
+export interface JournalEntryRow {
+  id: number;
+  voucherNumber: string;
+  voucherType: string;
+  date: string;
+  narration: string | null;
+  memo: string | null;
+  reference: string | null;
+  isReversed: boolean;
+  lines: JournalLine[];
+  fiscalYear: { id: number; name: string } | null;
+}
+
+export interface Paginated<T> {
+  items: T[];
+  pagination: { page: number; limit: number; totalCount: number; totalPages: number };
+}
+
+// Party ledger (GET /accounting/parties/:partyId/statement, read as tenant)
+export interface PartyStatementRow {
+  journalEntryId: number;
+  lineId: number;
+  date: string;
+  voucherNumber: string;
+  voucherType: string;
+  accountCode: string;
+  accountName: string;
+  description: string | null;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface PartyStatement {
+  party: {
+    id: number;
+    name: string;
+    type: string;
+    code: string | null;
+    panNumber: string | null;
+    creditDays: number | null;
+  };
+  fromDate: string | null;
+  toDate: string;
+  openingBalance: number;
+  rows: PartyStatementRow[];
+  totalDebit: number;
+  totalCredit: number;
+  closingBalance: number;
+}

@@ -17,7 +17,9 @@ import {
   ThemeIcon,
   Center,
   Loader,
+  Burger,
 } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import {
   IconDashboard,
   IconBuilding,
@@ -44,6 +46,12 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure(false);
+
+  // Navigating on mobile must dismiss the drawer, otherwise it stays over the page.
+  useEffect(() => {
+    closeMobile();
+  }, [pathname, closeMobile]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -70,15 +78,30 @@ export default function DashboardLayout({
 
   return (
     <AppShell
+      header={{ height: { base: 56, sm: 0 } }}
       navbar={{
         width: 280,
         breakpoint: 'sm',
+        collapsed: { mobile: !mobileOpened },
       }}
       padding="md"
     >
+      {/* Mobile-only bar — the sole way to reach the nav once it collapses. */}
+      <AppShell.Header hiddenFrom="sm" style={{ background: '#1a1a2e', border: 'none' }}>
+        <Group h="100%" px="md" gap="sm">
+          <Burger opened={mobileOpened} onClick={toggleMobile} size="sm" color="white" />
+          <ThemeIcon size={30} radius="md" color="red">
+            <IconShield size={18} />
+          </ThemeIcon>
+          <Title order={5} c="white">
+            रातो खाता
+          </Title>
+        </Group>
+      </AppShell.Header>
+
       <AppShell.Navbar p="md" style={{ background: '#1a1a2e' }}>
-        {/* Logo */}
-        <Box mb="xl" pt="xs">
+        {/* Logo — hidden on mobile, where the header already shows it */}
+        <Box mb="xl" pt="xs" visibleFrom="sm">
           <Group gap="sm">
             <ThemeIcon size={40} radius="md" color="red">
               <IconShield size={24} />

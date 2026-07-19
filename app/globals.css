@@ -13,3 +13,72 @@ body {
   background-color: #f8f9fa;
   min-height: 100vh;
 }
+
+/* ---------------------------------------------------------------------------
+   Print
+
+   Ledgers and statements are printed from inside a Mantine Modal, which lives in
+   a portal at the end of <body> and is visually positioned over the page. So
+   rather than trying to hide every chrome element, we hide everything by default
+   and then re-show only the subtree marked `.print-area`, promoting it to static
+   flow so it paginates instead of being clipped to one screen.
+   --------------------------------------------------------------------------- */
+@media print {
+  /* Collapse app chrome: nav, header, buttons, tabs, modal furniture. */
+  body * {
+    visibility: hidden;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Anything explicitly marked as screen-only (action buttons, filters). */
+  .no-print,
+  .no-print * {
+    display: none !important;
+  }
+
+  /* Let long statements paginate rather than scroll inside their container. */
+  .print-area [data-scrollable],
+  .print-area .mantine-ScrollArea-viewport {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  .print-area table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11pt;
+  }
+
+  .print-area th,
+  .print-area td {
+    padding: 4px 6px;
+    border-bottom: 1px solid #ddd;
+  }
+
+  /* Repeat column headers on every printed page. */
+  .print-area thead {
+    display: table-header-group;
+  }
+
+  .print-area tr {
+    break-inside: avoid;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}
