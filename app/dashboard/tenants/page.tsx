@@ -141,6 +141,7 @@ export default function TenantsPage() {
   const [editPan, setEditPan] = useState('');
   const [editVat, setEditVat] = useState('');
   const [editSlug, setEditSlug] = useState('');
+  const [editStrictVat, setEditStrictVat] = useState(false);
   const [isSavingInfo, setIsSavingInfo] = useState(false);
 
   // Edit expiry
@@ -240,6 +241,7 @@ export default function TenantsPage() {
     setEditPan(selectedTenant?.panNumber || '');
     setEditVat(selectedTenant?.vatNumber || '');
     setEditSlug(selectedTenant?.slug || '');
+    setEditStrictVat(Boolean(selectedTenant?.strictVatBilling));
     setEditInfoOpen(true);
   };
 
@@ -247,11 +249,12 @@ export default function TenantsPage() {
     if (!selectedTenant) return;
     setIsSavingInfo(true);
     try {
-      const payload: Record<string, string> = {};
+      const payload: Record<string, string | boolean> = {};
       if (editName.trim()) payload.name = editName.trim();
       if (editSlug.trim()) payload.slug = editSlug.trim();
       if (editPan.trim()) payload.panNumber = editPan.trim();
       if (editVat.trim()) payload.vatNumber = editVat.trim();
+      payload.strictVatBilling = editStrictVat;
 
       await apiPut(`/tenants/${selectedTenant.id}/admin-info`, payload);
       const updated = {
@@ -260,6 +263,7 @@ export default function TenantsPage() {
         slug: editSlug.trim() || selectedTenant.slug,
         panNumber: editPan.trim() || null,
         vatNumber: editVat.trim() || null,
+        strictVatBilling: editStrictVat,
       };
       setSelectedTenant(updated);
       setTenants((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
@@ -484,6 +488,12 @@ export default function TenantsPage() {
                       <Text size="sm" fw={500}>#{selectedTenant.id}</Text>
                     </Box>
                     <Box>
+                      <Text size="xs" c="dimmed">VAT Billing</Text>
+                      <Badge color={selectedTenant.strictVatBilling ? 'green' : 'gray'} size="sm">
+                        {selectedTenant.strictVatBilling ? 'VAT registered' : 'Gross (no VAT)'}
+                      </Badge>
+                    </Box>
+                    <Box>
                       <Text size="xs" c="dimmed">Status</Text>
                       {getStatusBadge(selectedTenant.status)}
                     </Box>
@@ -509,6 +519,13 @@ export default function TenantsPage() {
                       <TextInput label="PAN Number" value={editPan} onChange={(e) => setEditPan(e.target.value)} />
                       <TextInput label="VAT Number" value={editVat} onChange={(e) => setEditVat(e.target.value)} />
                     </SimpleGrid>
+                    <Switch
+                      mt="md"
+                      checked={editStrictVat}
+                      onChange={(e) => setEditStrictVat(e.currentTarget.checked)}
+                      label="VAT registered (strict VAT billing)"
+                      description="On: tax invoice with taxable / non-taxable / VAT breakdown. Off: plain invoice showing a gross total only."
+                    />
                     <Group justify="flex-end" mt="md">
                       <Button variant="subtle" onClick={() => setEditInfoOpen(false)}>Cancel</Button>
                       <Button loading={isSavingInfo} onClick={handleSaveInfo}>Save Changes</Button>

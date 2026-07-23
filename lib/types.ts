@@ -35,6 +35,7 @@ export interface Tenant {
   fiscalYear: string;
   panNumber: string | null;
   vatNumber: string | null;
+  strictVatBilling: boolean;
   status: 'ACTIVE' | 'SUSPENDED';
   createdAt: string;
 }
